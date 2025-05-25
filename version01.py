@@ -2,9 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import os
+import pandas as pd
+from skimage.metrics import structural_similarity as ssim
 
+os.chdir("c:\\Users\\rabia\\Desktop\\vs_workspace\\goruntu_isleme\\Steganography_Project")  # change it to your working directory
 
-# --------------TEXT TO IMAGE-------------------
+# --------------TEXT TO IMAGE FUNCTIONS-------------------
 
 def text_to_binary(msg):
     """
@@ -119,8 +122,8 @@ def reveal_text(image_path):
                         hidden_msg += karakter
                         bitler = "" # yeni 8lik bit dizisi için sıfırlanır
 
+# --------------IMAGE TO IMAGE FUNCTIONS------------------
 
-# --------------IMAGE TO IMAGE------------------
 def pixel_to_binary(flatten_img):
     """
     flatten_img = [72, 105, 0, 255, 87, 98, ...]
@@ -339,12 +342,162 @@ def reveal_img(image_path):
     return hidden_img
 
 
+# --------------PERFORMANCE METRICS------------------
+# text-to-image için BER en önemli metriktir, metin boyutu küçük olduğu için PSNR/SSIM genelde çok iyi çıkar çünkü değişiklik azdır
+# image-to-image için PSNR/MSE/SSIM/BER
 
-os.chdir("c:\\Users\\rabia\\Desktop\\vs_workspace\\goruntu_isleme\\Steganography_Project")
-# Resmin tam yolu
-# img_path = os.path.join(base_dir, "images", "lenna.png")
+def calculate_mse(original_img, hidden_img):
+    """
+    Orijinal görüntü ile gizlenmiş görüntü arasındaki piksel farklarının ortalaması
+    Ne kadar küçük değer olursa o kadar iyi performans gösterir
+    Eğer 0 ise iki görüntü birbirinin aynısıdır
+    """
+    mse = np.mean((original_img.astype(np.float32) - hidden_img.astype(np.float32)) **2)
+    return mse
 
-# img = cv2.imread(img_path)
-# hidden_img = hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img_gray.png", gray_flag=True)
-hidden_img = reveal_img("result_data/result_img_to_img_gray.png")
-plt.imshow(hidden_img)
+def calculate_psnr(original_img, hidden_img):
+    """
+    Orijinal görüntü ile gizlenmiş görüntü arasındaki benzerliği ölçer. Bozulma seviyesi hakkında bilgi verir.
+    
+    PSNR: > 30 --> Mükemmel kalite
+    PSNR: 20-30 --> Kabul edilebilir
+    PSNR: < 20 --> Görselde bozulma var
+    """
+    mse = calculate_mse(original_img, hidden_img)
+    # if mse == 0:
+    #     return "Original image and result image is the same"
+    
+    psnr = 10 * np.log10(255*255/mse)   # 255: 8 bit piksel değerleri arasındaki olabilecek en yüksek fark 
+    return psnr
+
+def calculate_ssim(original_img, hidden_img):
+    """
+    İnsan gözüne göre farkı değerlendirir
+    0 (tam farklı) ile 1(tam benzer) arasında değerler verir
+    Özellikle image-to-image için faydalı, yapısal bozulmayı ölçtüğü için
+    text-to-image için metin az yer kapladığı için çok küçük farklar olabilir
+    """
+    if len(original_img.shape) == 3:
+        return np.mean([ssim(original_img[:,:,i], hidden_img[:,:,i], data_range=255) for i in range(3)])
+    else:
+        return ssim(original_img, hidden_img, data_range=255)
+
+def calculate_ber(original_bits, extracted_bits):
+    """
+    Gizli verinin çıkarıldıktan sonra ne kadarının hatalı olduğunu ölçer
+    En anlamlı metriklerden biri bu alanda
+    """
+    min_len = min(len(original_bits), len(extracted_bits))
+    errors = sum(o != e for o, e in zip(original_bits[:min_len], extracted_bits[:min_len]))
+    return errors / min_len
+
+def image_to_bits(image):
+    return ''.join(format(byte, '08b') for byte in image.flatten())
+
+def print_performance():
+    # Görselleri yükle
+    img_og_rgb = cv2.imread("input_data/lenna.png")
+    img_og_gray = cv2.cvtColor(img_og_rgb, cv2.COLOR_BGR2GRAY)
+
+    img_result_hi = cv2.imread("result_data/result_hi.png")
+    img_result_hi_gray = cv2.imread("result_data/result_hi_gray.png", cv2.IMREAD_GRAYSCALE)
+
+    img_result_img_to_img = cv2.imread("result_data/result_img_to_img.png")
+    img_result_img_to_img_gray = cv2.imread("result_data/result_img_to_img_gray.png", cv2.IMREAD_GRAYSCALE)
+
+    img_hidden_rgb = cv2.imread("input_data/random_rgb_128_128.png")
+    img_hidden_gray = cv2.imread("input_data/random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
+
+    # 64x64
+    img_result_img_to_img_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
+    img_result_img_to_img_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+
+    # 64x64
+    img_hidden_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
+    img_hidden_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+
+    # Extracted gizli img'leri tekrar oku
+    img_extracted_rgb = cv2.imread("result_data/result_img_to_img.png")
+    img_extracted_gray = cv2.imread("result_data/result_img_to_img_gray.png", cv2.IMREAD_GRAYSCALE)
+    # 64x64
+    img_extracted_rgb_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
+    img_extracted_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+
+    # BER için bit dizileri
+    bits_hidden_rgb = image_to_bits(img_hidden_rgb)
+    bits_extracted_rgb = image_to_bits(img_extracted_rgb)
+
+    bits_hidden_gray = image_to_bits(img_hidden_gray)
+    bits_extracted_gray = image_to_bits(img_extracted_gray)
+
+    # 64x64
+    bits_hidden_rgb_64_64 = image_to_bits(img_hidden_rgb)
+    bits_extracted_rgb_64_64 = image_to_bits(img_extracted_rgb)
+
+    bits_hidden_gray_64_64 = image_to_bits(img_hidden_gray)
+    bits_extracted_gray_64_64 = image_to_bits(img_extracted_gray)
+
+    results = {
+        "Text-to-Image (RGB)": {
+            "PSNR": calculate_psnr(img_og_rgb, img_result_hi),
+            "MSE": calculate_mse(img_og_rgb, img_result_hi),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_hi),
+            "BER": "N/A"
+        },
+        "Text-to-Image (Gray)": {
+            "PSNR": calculate_psnr(img_og_gray, img_result_hi_gray),
+            "MSE": calculate_mse(img_og_gray, img_result_hi_gray),
+            "SSIM": calculate_ssim(img_og_gray, img_result_hi_gray),
+            "BER": "N/A"
+        },
+        "Image-to-Image (RGB)": {
+            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img),
+            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img),
+            "BER": calculate_ber(bits_hidden_rgb, bits_extracted_rgb)
+        },
+        "Image-to-Image (Gray)": {
+            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray),
+            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray),
+            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray),
+            "BER": calculate_ber(bits_hidden_gray, bits_extracted_gray)
+        },
+        "Image-to-Image (RGB) (64x64)": {
+            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64_64),
+            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64_64),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64_64),
+            "BER": calculate_ber(bits_hidden_rgb_64_64, bits_extracted_rgb_64_64)
+        },
+        "Image-to-Image (Gray) (64x64)": {
+            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64_64),
+            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64_64),
+            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64_64),
+            "BER": calculate_ber(bits_hidden_gray_64_64, bits_extracted_gray_64_64)
+        }
+        
+    }
+
+    # Tablo halinde göster
+    df = pd.DataFrame(results).T.round(4)
+    print(df)
+# --------------USE EXAMPLES------------------
+
+# # Hiding text in image
+# hide_text("input_data/lenna.png", "Hi rabia!", "result_data/result_hi.png")
+# # revealing text in image
+# hidden_msg = reveal_text("result_data/result_hi.png")
+
+# # Hiding text in image (grayscale)
+# hide_text("input_data/lenna.png", "Hi rabia!", "result_data/result_hi_gray.png", grey_flag=True)
+# # revealing text in image 
+# hidden_msg = reveal_text("result_data/result_hi_gray.png")
+
+# # Hiding image in image
+# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img.png")
+# hidden_img = reveal_img("result_data/result_img_to_img.png")
+
+# # Hiding image in image (greyscale)
+# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img_gray.png", gray_flag=True)
+# hidden_img = reveal_img("result_data/result_img_to_img_gray.png")
+
+print_performance()
