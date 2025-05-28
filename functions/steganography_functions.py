@@ -72,34 +72,107 @@ def save_image_to_file(image):
         return file_path
     return None
 
-def embed_text_to_image(image, text):
-    """Metni görüntüye gizleme fonksiyonu (LSB Steganografi)"""
-    # Görüntüyü NumPy dizisine dönüştür (kopyasını al)
-    img_array = np.array(image).copy()
-    
-    # Metni binary formatına dönüştür
-    binary_text = ''.join(format(ord(char), '08b') for char in text)
-    binary_text += '0' * 8  # Metnin sonunu işaretlemek için null karakteri ekle
 
-    # Metni gizlemek için yeterli piksel var mı kontrol et
-    if len(binary_text) > img_array.size:
-        raise ValueError("Metin bu görüntü için çok uzun!")
+
+
+
+def text_to_binary(msg):
+    """
+    msg = "Hi"
+    'H' = 72 = '01001000'
+    'i' = 105 = '01101001'
+    result = '0100100001101001'
+    """
+    return ''.join(format(ord(c), '08b') for c in msg)  # ord() returns binary version
+
+def embed_text_to_image(image_path, msg, output_path, grey_flag:bool=False):
+    if grey_flag:
+        img = cv2.imread(image_path,cv2.IMREAD_GRAYSCALE)    
+    else:
+        img = cv2.imread(image_path)
+
+    if img is None:
+        raise Exception("Image path is wrong")
     
-    # Şekillendir
-    flat_img = img_array.flatten()
-    
-    # LSB steganografi - her pikselin en düşük değerlikli bitini değiştir
-    for i in range(len(binary_text)):
-        if binary_text[i] == '1':
-            flat_img[i] = flat_img[i] | 1  # En düşük biti 1 yap
-        else:
-            flat_img[i] = flat_img[i] & 254  # En düşük biti 0 yap (254 = 0b11111110)
-    
-    # Diziyi orijinal şekline geri döndür
-    stego_img = flat_img.reshape(img_array.shape)
-    
-    # NumPy dizisini PIL Image'a dönüştür
-    return Image.fromarray(stego_img.astype(np.uint8))
+    msg += chr(0)   # sonuna \0 eklenir
+    binary_msg = text_to_binary(msg)
+    binary_index = 0
+    print("len of message in bits: ", len(binary_msg))
+    print("binary_msg: ", binary_msg)
+
+    if(len(img.shape) == 3): # rgb
+        print("\nImage is in RGB")
+        size_x, size_y, _ = img.shape
+
+        max_bits = img.shape[0] * img.shape[1] * 3
+        if len(binary_msg) > max_bits:
+            raise ValueError("Mesaj çok uzun, resme sığmıyor.")
+        
+        for x in range(size_x):
+            for y in range(size_y):
+                for channel in range(3):
+                    if binary_index < len(binary_msg):
+                        img[x, y, channel] =  (img[x, y, channel] & ~1) | int(binary_msg[binary_index])
+                        binary_index += 1
+                    else:
+                        break
+
+    else: # grey scale
+        print("\nImage is in grey scale")
+        size_x, size_y = img.shape
+
+        max_bits = img.shape[0] * img.shape[1]
+        if len(binary_msg) > max_bits:
+            raise ValueError("Mesaj çok uzun, resme sığmıyor.")
+        
+        for x in range(size_x):
+            for y in range(size_y):
+                    if binary_index < len(binary_msg):
+                        img[x, y] =  (img[x, y] & ~1) | int(binary_msg[binary_index])
+                        binary_index += 1
+                    else:
+                        break
+
+    # plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))  
+    print("kaydetme öncesi shape: " , img.shape)     
+    cv2.imwrite(output_path, img)
+    test = cv2.imread(output_path , cv2.IMREAD_UNCHANGED)
+    print("Kaydedilen görüntü yeniden okunduğunda shape:", test.shape)
+
+    print("Hidden char count: ",binary_index)
+    print("Message is hidden succesfully")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def extract_text_from_image(image):
     """Görüntüden metni çıkarma fonksiyonu"""

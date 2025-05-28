@@ -233,17 +233,20 @@ class TextHidingTab:
             return
         
         try:
-            # Yazıyı resme gizle
-            self.output_image = embed_text_to_image(self.input_image, text_to_hide)
+            # Path'i kullanarak yazıyı resme gizle (output_path olarak input_path'i kullan)
+            embed_text_to_image(self.input_image_path, text_to_hide, self.input_image_path)
             
-            # Sonucu önizlemede göster (daha büyük boyut)
+            # İşlenen resmi yeniden yükle
+            self.output_image = Image.open(self.input_image_path)
+            
+            # Sonucu önizlemede göster
             display_image(self.output_image, self.image_preview, (600, 380))
             
             self.status_var.set("Yazı başarıyla gizlendi!")
             self.process_status_var.set("Yazı gizlendi - Kaydetmeye hazır ✅")
             
             char_count = len(text_to_hide)
-            messagebox.showinfo("Başarılı", f"Yazı resme başarıyla gizlendi!\n\nGizlenen yazı: {char_count} karakter\n\nArtık steganografik resmi kaydedebilirsiniz.")
+            messagebox.showinfo("Başarılı", f"Yazı resme başarıyla gizlendi!\n\nGizlenen yazı: {char_count} karakter\n\nOrijinal resim üzerine kaydedildi.")
             
         except Exception as e:
             messagebox.showerror("Hata", f"Yazı gizleme sırasında hata oluştu: {str(e)}")
