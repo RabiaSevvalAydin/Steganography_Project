@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
+import cv2
 from functions.steganography_functions import (
     extract_image_from_image, 
     select_steganographic_image_for_extraction,
@@ -189,7 +190,7 @@ class ImageExtractionTab:
             file_path = select_steganographic_image_for_extraction()
             
             if file_path:
-                self.image_path = file_path
+                self.image_path = file_path  # ✅ Bu satır zaten var, iyi!
                 self.steganographic_image = Image.open(file_path)
                 
                 # Steganografik resmi önizlemede göster (daha büyük boyut)
@@ -222,10 +223,18 @@ class ImageExtractionTab:
             return
         
         try:
-            # Resimden gizli resmi çıkar
-            self.extracted_image = extract_image_from_image(self.steganographic_image)
+            # Resimden gizli resmi çıkar - PATH gönder
+            extracted_cv2_image = extract_image_from_image(self.image_path)
             
-            # Çıkarılan resmi önizlemede göster (daha büyük boyut)
+            # OpenCV formatından PIL formatına çevir
+            if len(extracted_cv2_image.shape) == 3:  # RGB
+                # BGR'den RGB'ye çevir
+                extracted_cv2_image = cv2.cvtColor(extracted_cv2_image, cv2.COLOR_BGR2RGB)
+            
+            # PIL Image'a çevir
+            self.extracted_image = Image.fromarray(extracted_cv2_image)
+            
+            # Çıkarılan resmi önizlemede göster
             display_image(self.extracted_image, self.extracted_image_preview, (600, 240))
             
             # Durum güncelle
@@ -237,14 +246,15 @@ class ImageExtractionTab:
             self.stats_var.set(f"Çıkarılan: {width}x{height}\nFormat: {self.extracted_image.mode}\nDurum: Hazır")
             
             messagebox.showinfo("Başarılı", 
-                              f"Gizli resim başarıyla çıkarıldı!\n\n"
-                              f"Çıkarılan resim boyutu: {width}x{height} piksel\n"
-                              f"Resim formatı: {self.extracted_image.mode}")
+                            f"Gizli resim başarıyla çıkarıldı!\n\n"
+                            f"Çıkarılan resim boyutu: {width}x{height} piksel\n"
+                            f"Resim formatı: {self.extracted_image.mode}")
             
         except Exception as e:
             messagebox.showerror("Hata", f"Resim çıkarma sırasında hata oluştu: {str(e)}")
             self.status_var.set("Hata: Resim çıkarılamadı")
             self.result_var.set("İşlem başarısız! ❌")
+
     
     def save_image(self):
         """Çıkarılan resmi kaydetme fonksiyonu"""

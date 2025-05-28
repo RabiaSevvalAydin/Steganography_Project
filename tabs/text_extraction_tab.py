@@ -198,19 +198,22 @@ class TextExtractionTab:
     
     def extract_text(self):
         """Gizli yazıyı çıkarma fonksiyonu"""
-        if not self.image:
+        if not hasattr(self, 'image_path') or not self.image_path:
             messagebox.showwarning("Uyarı", "Lütfen önce steganografik bir resim seçin!")
             return
         
         try:
-            # Resimden gizli yazıyı çıkar
-            self.extracted_text = extract_text_from_image(self.image)
+            # Resimden gizli yazıyı çıkar (path gönder)
+            extracted_result = extract_text_from_image(self.image_path)
+            
+            # None kontrolü ekle
+            self.extracted_text = extracted_result if extracted_result is not None else ""
             
             # Sonucu göster
             self.result_text.config(state=tk.NORMAL)
             self.result_text.delete("1.0", tk.END)
             
-            if self.extracted_text.strip():
+            if self.extracted_text and self.extracted_text.strip():
                 self.result_text.insert("1.0", self.extracted_text)
                 self.status_var.set("Gizli yazı başarıyla çıkarıldı!")
                 messagebox.showinfo("Başarılı", f"Gizli yazı başarıyla çıkarıldı!\n\nÇıkarılan yazı {len(self.extracted_text)} karakter uzunluğunda.")
@@ -224,6 +227,10 @@ class TextExtractionTab:
         except Exception as e:
             messagebox.showerror("Hata", f"Yazı çıkarma sırasında hata oluştu: {str(e)}")
             self.status_var.set("Hata: Yazı çıkarılamadı")
+            # Hata durumunda result_text'i temizle
+            self.result_text.config(state=tk.NORMAL)
+            self.result_text.delete("1.0", tk.END)
+            self.result_text.config(state=tk.DISABLED)
     
     def save_text(self):
         """Çıkarılan yazıyı dosyaya kaydetme fonksiyonu"""

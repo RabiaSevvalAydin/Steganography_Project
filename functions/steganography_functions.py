@@ -142,131 +142,305 @@ def embed_text_to_image(image_path, msg, output_path, grey_flag:bool=False):
     print("Hidden char count: ",binary_index)
     print("Message is hidden succesfully")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def extract_text_from_image(image):
-    """Görüntüden metni çıkarma fonksiyonu"""
-    # Görüntüyü NumPy dizisine dönüştür
-    img_array = np.array(image)
+def extract_text_from_image(image_path):
+    img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise Exception("Image path is wrong")
     
-    # Şekillendir
-    flat_img = img_array.flatten()
+    bitler = ""
+    hidden_msg = ""
     
-    # LSB'leri çıkar
-    binary_text = ''
-    for i in range(flat_img.size):
-        binary_text += str(flat_img[i] & 1)
-        # Her 8 bit sonra kontrol et
-        if i > 0 and (i+1) % 8 == 0:
-            # Son 8 biti kontrol et - eğer null karakter ise dur
-            if binary_text[i-7:i+1] == '00000000':
+    if len(img.shape)==3:   # rgb
+        print("\nImage is in RGB")
+        size_x, size_y, _ = img.shape
+        for x in range(size_x):
+            for y in range(size_y):
+                for channel in range(3):
+                    bitler += str(img[x, y, channel] & 1)   # son biti al ve stringe çevir
+
+                    if len(bitler) == 8:
+                        print("bitler: ", bitler)
+                        karakter = chr(int(bitler,2))    # toplanan 8 biti karaktere çevirir
+                        print("karakter: ", karakter)
+                        if karakter == "\0":  # eğer karakter \0 ise metin çıkarma işlemi sonlandırılır
+                            print("hidden_msg length: ", len(hidden_msg))
+                            return hidden_msg
+                        hidden_msg += karakter
+                        bitler = "" # yeni 8lik bit dizisi için sıfırlanır
+    else:   # gray scale image
+        img = cv2.imread(image_path,cv2.IMREAD_GRAYSCALE)
+        print("\nImage is in grey scale")
+        size_x, size_y = img.shape
+        for x in range(size_x):
+            for y in range(size_y):
+                    bitler += str(img[x, y] & 1)   # son biti al ve stringe çevir
+
+                    if len(bitler) == 8:
+                        print("bitler: ", bitler)
+                        karakter = chr(int(bitler,2))    # toplanan 8 biti karaktere çevirir
+                        print("karakter: ", karakter)
+                        if karakter == "\0":  # eğer karakter \0 ise metin çıkarma işlemi sonlandırılır
+                            print("hidden_msg length: ", len(hidden_msg))
+                            return hidden_msg
+                        hidden_msg += karakter
+                        bitler = "" # yeni 8lik bit dizisi için sıfırlanır
+    
+    # Eğer \0 karakteri bulunamazsa, toplanan mesajı döndür
+    print("hidden_msg length (final): ", len(hidden_msg))
+    return hidden_msg if hidden_msg else ""
+
+
+
+
+
+
+
+
+
+
+def pixel_to_binary(flatten_img):
+    """
+    flatten_img = [72, 105, 0, 255, 87, 98, ...]
+    72 = '01001000'
+    105 = '01101001'
+    result = '0100100001101001.....'
+    """
+    return ''.join(format(byte, '08b') for byte in flatten_img)   
+
+def embed_image_to_image(image_path, secret_img_path, output_path, gray_flag:bool=False):
+    if gray_flag:
+        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        img_secret = cv2.imread(secret_img_path, cv2.IMREAD_GRAYSCALE)
+    else:
+        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        img_secret = cv2.imread(secret_img_path, cv2.IMREAD_UNCHANGED)
+
+    if img is None or img_secret is None:
+        raise Exception("Image path is wrong")
+    
+    if len(img.shape) == 3: # rgb
+        size_x_1, size_y_1, _ = img.shape
+        size_x_2, size_y_2, _ = img_secret.shape
+        print("Size of original image: ", size_x_1, size_y_1)
+        print("Size of image to hide: ", size_x_2, size_y_2)
+
+        # boyut kontrolü
+        if size_x_1 * size_y_1 * 3 < size_x_2 * size_y_2 * 24:
+            print(img.shape)
+            print(img_secret.shape)
+            raise ValueError(f"Seçilen resim, saklanacak resmi gömmek için yeterli büyüklükte değil, {size_x_1 * size_y_1 * 3} > {size_x_2 * size_y_2 * 24} olmalı\n Ana resim boyutu {size_x_1}x{size_y_1}, Gömülecek resim boyutu {size_x_2}x{size_y_2}")
+        
+        print("img_secret.shape", img_secret.shape) # (512, 512, 3)
+        img_secret_flat = img_secret.flatten()
+        print("img_secret_flat.shape", img_secret_flat.shape) # (786432,) # her bir piksel değerine ulaşmayı kolaylaştırır, görüntüyü piksel piksel ve kanal kanal gezmek terine tek bir sıra haline getiriyoruz
+
+        binary_secret = pixel_to_binary(img_secret_flat)
+        print("binary_img_size", len(binary_secret))
+
+        # resmin ilk 32 bitlik kısmı saklanacak görüntünün boyut bilgisinin saklanması için ayrılır
+        # burada 32 seçilerek 2^32 boyutunda resimlerin saklanabilmesi için yeterli alan ayrılabilir
+        # alternatif olarak 16 seçilebilir fakat bu sefer 2^16=65535 pikselden fazla genişlik ya da yükseklikteki görüntüler saklanamaz
+        x_info = format(size_x_2, '032b')
+        y_info = format(size_y_2, '032b')
+        boyut_bits = x_info + y_info    # 64 bit=64 lsb lazım -> 22 pixel gerekiyor (22x3 = 66)
+
+        # öncelikle boyut bilgisi gömülür
+        boyut_bit_index = 0
+        for x in range(size_x_1):
+            for y in range(size_y_1):
+                for channel in range(3):
+                    if boyut_bit_index < len(boyut_bits):
+                        img[x, y, channel] =  (img[x, y, channel] & ~1) | int(boyut_bits[boyut_bit_index])
+                        boyut_bit_index += 1
+                    else: 
+                        break
+
+        # ardından görüntü gömülür
+        binary_index = 0
+        first_22_pixel_count = 0
+        for x in range(size_x_1):
+            for y in range(size_y_1):
+                if first_22_pixel_count < 22:
+                    first_22_pixel_count += 1   # ilk 22 piksel boyut bilgisini tuttuğu için atlanır
+                    continue
+                for channel in range(3):
+                    if binary_index < len(binary_secret):
+                        img[x, y, channel] =  (img[x, y, channel] & ~1) | int(binary_secret[binary_index])
+                        binary_index += 1
+                    else: 
+                        break
+                if binary_index >= len(binary_secret):
+                    break
+            if binary_index >= len(binary_secret):
                 break
-    
-    # Binary'den text'e dönüştür
-    text = ""
-    for i in range(0, len(binary_text), 8):
-        if i + 8 > len(binary_text):
-            break
+    else: # greyscale images
+        size_x_1, size_y_1 = img.shape
+        size_x_2, size_y_2 = img_secret.shape
+        print("Size of original image: ", size_x_1, size_y_1)
+        print("Size of image to hide: ", size_x_2, size_y_2)
+
+        # boyut kontrolü
+        if size_x_1 * size_y_1 < size_x_2 * size_y_2 * 8:
+            print(img.shape)
+            print(img_secret.shape)
+            raise ValueError(f"Seçilen resim, saklanacak resmi gömmek için yeterli büyüklükte değil, {size_x_1 * size_y_1 } > {size_x_2 * size_y_2 * 8} olmalı")
         
-        byte = binary_text[i:i+8]
-        char = chr(int(byte, 2))
-        
-        # Null karakteri görünce dur (metnin sonu)
-        if char == '\0':
-            break
+        print("img_secret.shape", img_secret.shape) # (512, 512)
+        img_secret_flat = img_secret.flatten()
+        print("img_secret_flat.shape", img_secret_flat.shape) # (262144,) # her bir piksel değerine ulaşmayı kolaylaştırır, görüntüyü piksel piksel ve kanal kanal gezmek terine tek bir sıra haline getiriyoruz
+
+        binary_secret = pixel_to_binary(img_secret_flat)
+        print("binary_img_size", len(binary_secret))
+
+        # resmin ilk 32 bitlik kısmı saklanacak görüntünün boyut bilgisinin saklanması için ayrılır
+        # burada 32 seçilerek 2^32 boyutunda resimlerin saklanabilmesi için yeterli alan ayrılabilir
+        # alternatif olarak 16 seçilebilir fakat bu sefer 2^16=65535 pikselden fazla genişlik ya da yükseklikteki görüntüler saklanamaz
+        x_info = format(size_x_2, '032b')
+        y_info = format(size_y_2, '032b')
+        boyut_bits = x_info + y_info    # 64 bit=64 lsb lazım -> 22 pixel gerekiyor (22x3 = 66)
+
+        # öncelikle boyut bilgisi gömülür
+        boyut_bit_index = 0
+        for x in range(size_x_1):
+            for y in range(size_y_1):
+                    if boyut_bit_index < len(boyut_bits):
+                        img[x, y] =  (img[x, y] & ~1) | int(boyut_bits[boyut_bit_index])
+                        boyut_bit_index += 1
+                    else: 
+                        break
+
+        # ardından görüntü gömülür
+        binary_index = 0
+        first_64_pixel_count = 0
+        for x in range(size_x_1):
+            for y in range(size_y_1):
+                if first_64_pixel_count < 64:
+                    first_64_pixel_count += 1   # ilk 64 piksel boyut bilgisini tuttuğu için atlanır
+                    continue
+                if binary_index < len(binary_secret):
+                    img[x, y] =  (img[x, y] & ~1) | int(binary_secret[binary_index])
+                    binary_index += 1
+                else: 
+                    break
+            if binary_index >= len(binary_secret):
+                break
+  
+    print("Hidden bit count: ",binary_index)
+    cv2.imwrite(output_path, img)
+    print("Image is hidden succesfully")
+
+
+
+
+
+
+
+
+
+
+
+
+
+def extract_image_from_image(image_path):
+    img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise Exception("Image path is wrong") 
+
+    if len(img.shape)==3: # rgb
+        size_x, size_y, _ = img.shape
+        # Önce boyut bilgisi çıkartılır
+        bitler = ""
+        bit_index = 0
+        for x in range(size_x):
+            for y in range(size_y):
+                for channel in range(3):
+                    if bit_index > 63:
+                        break
+                    else:   # ilk 64 bit alınır boyut bilgisi için
+                        bitler += str(img[x, y, channel] & 1)
+                        bit_index += 1
+
+        x_info = int(bitler[:32], 2)
+        y_info = int(bitler[32:], 2)
+        print(f"Hidden image size is {x_info}x{y_info}")
+
+        # Boyut bilgisine göre gizli görsel çıkartılır
+        toplam_bit = x_info*y_info*3*8
+        hidden_bits = ""
+        pixel_count = 0  # Toplam piksel sayacı
+
+        for x in range(size_x):
+            for y in range(size_y):
+                pixel_count += 1
+                
+                # İlk 22 pikseli atla (66 kanal = 22 piksel * 3 kanal)
+                if pixel_count <= 22:
+                    continue
+                    
+                for channel in range(3):
+                    if len(hidden_bits) < toplam_bit:
+                        hidden_bits += str(img[x, y, channel] & 1)
+                    else:
+                        # Yeterli bit toplandı, çık
+                        break
+                
+                # Yeterli bit toplandıysa döngüden çık
+                if len(hidden_bits) >= toplam_bit:
+                    break
             
-        text += char
+            # Yeterli bit toplandıysa döngüden çık
+            if len(hidden_bits) >= toplam_bit:
+                break
+
+        print("Number of hidden image bits revealed is ", len(hidden_bits))
+        print("It should be equal to:", x_info*y_info*3*8)
+        
+        hidden_byte_list = [int(hidden_bits[i:i+8], 2) for i in range(0, len(hidden_bits), 8)]
+        hidden_img = np.array(hidden_byte_list, dtype=np.uint8).reshape((x_info, y_info, 3))
+    else: #grayscale
+        size_x, size_y = img.shape
+        # Önce boyut bilgisi çıkartılır
+        bitler = ""
+        bit_index = 0
+        for x in range(size_x):
+            for y in range(size_y):
+                if bit_index > 63:
+                    break
+                else:   # ilk 64 bit alınır boyut bilgisi için
+                    bitler += str(img[x, y] & 1)
+                    bit_index += 1
+
+        x_info = int(bitler[:32], 2)
+        y_info = int(bitler[32:], 2)
+        print(f"Hidden image size is {x_info}x{y_info}")
+
+        # Boyut bilgisine göre gizli görsel çıkartılır
+        toplam_bit = x_info*y_info*8
+        hidden_bits = ""
+        first_64_pixel_count = 0
+        for x in range(size_x):
+            for y in range(size_y):
+                if first_64_pixel_count < 64:
+                    first_64_pixel_count += 1   # ilk 22 piksel boyut bilgisini tuttuğu için atlanır
+                    continue
+                if len(hidden_bits) < toplam_bit:
+                    hidden_bits += str(img[x, y] & 1)
+                else:
+                    print("Number of hidden image bits revealed is ", len(hidden_bits))
+                    print("It should be equal to:", x_info*y_info*8)
+                    break
+            if len(hidden_bits) >= toplam_bit:
+                break
+
+        hidden_byte_list = [int(hidden_bits[i:i+8], 2) for i in range(0, len(hidden_bits), 8)]
+        hidden_img = np.array(hidden_byte_list, dtype=np.uint8).reshape((x_info, y_info))
     
-    return text
+    return hidden_img
 
 
-def embed_image_to_image(cover_image, secret_image, quality_level=2):
-    """
-    Adaptif bit seçimi
-    quality_level: 1=düşük bozulma, 2=orta, 3=yüksek kalite gizli resim
-    """
-    cover_array = np.array(cover_image).copy()
-    secret_resized = secret_image.resize(cover_image.size, Image.LANCZOS)
-    secret_array = np.array(secret_resized)
-    
-    if quality_level == 1:  # Minimum bozulma
-        bits = 2
-        secret_mask = 0xC0  # 11000000
-        cover_mask = 0xFC   # 11111100
-        shift = 6
-    elif quality_level == 2:  # Dengeli
-        bits = 3
-        secret_mask = 0xE0  # 11100000
-        cover_mask = 0xF8   # 11111000
-        shift = 5
-    else:  # quality_level == 3, Maksimum gizli resim kalitesi
-        bits = 4
-        secret_mask = 0xF0  # 11110000
-        cover_mask = 0xF0   # 11110000
-        shift = 4
-    
-    # Bit işlemleri
-    secret_bits = (secret_array & secret_mask) >> shift
-    cover_cleared = cover_array & cover_mask
-    stego_array = cover_cleared | secret_bits
-    
-    return Image.fromarray(stego_array.astype(np.uint8))
+    #return Image.fromarray(extracted_bits.astype(np.uint8))
 
-def extract_image_from_image(stego_image, quality_level=2):
-    """Adaptif çıkarma"""
-    stego_array = np.array(stego_image)
-    
-    if quality_level == 1:
-        bits = 2
-        extract_mask = 0x03  # 00000011
-        shift = 6
-    elif quality_level == 2:
-        bits = 3
-        extract_mask = 0x07  # 00000111
-        shift = 5
-    else:  # quality_level == 3
-        bits = 4
-        extract_mask = 0x0F  # 00001111
-        shift = 4
-    
-    # Çıkarma ve genişletme
-    extracted_bits = (stego_array & extract_mask) << shift
-    
-    # Bit genişletme (kalite artırma)
-    for i in range(1, 8 // bits):
-        extracted_bits = extracted_bits | (extracted_bits >> (bits * i))
-    
-    return Image.fromarray(extracted_bits.astype(np.uint8))
+
 
 
 

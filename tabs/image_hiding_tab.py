@@ -238,10 +238,21 @@ class ImageHidingTab:
             return
         
         try:
-            # Resmi gizle
-            self.result_image = embed_image_to_image(self.main_image, self.secret_image)
+            # Output path oluştur
+            output_path = "temp_steganographic_result.png"
             
-            # Sonuç resmi önizlemede göster - DİNAMİK BOYUT (max 600x350)
+            # Resmi gizle - PATH'leri gönder
+            embed_image_to_image(
+                self.main_image_path,      # Path gönder
+                self.secret_image_path,    # Path gönder  
+                output_path,               # Çıktı path'i
+                False                      # gray_flag
+            )
+            
+            # Sonuç resmini yükle
+            self.result_image = Image.open(output_path)
+            
+            # Sonuç resmi önizlemede göster
             display_image(self.result_image, self.result_image_preview, (600, 350))
             
             self.status_var.set("Resim başarıyla gizlendi!")
@@ -260,6 +271,7 @@ class ImageHidingTab:
         except Exception as e:
             messagebox.showerror("Hata", f"Resim gizleme sırasında hata oluştu: {str(e)}")
             self.status_var.set("Hata: Resim gizlenemedi")
+
             
     def save_result(self):
         """Sonuç resmini kaydetme fonksiyonu"""
