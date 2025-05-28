@@ -1,16 +1,80 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+from PIL import Image, ImageTk
+from tkinter import filedialog, messagebox
 import os
-import pandas as pd
-from skimage.metrics import structural_similarity as ssim
+import cv2
 
-os.chdir("c:\\Users\\rabia\\Desktop\\vs_workspace\\goruntu_isleme\\Steganography_Project")  # change it to your working directory
 
-# --------------TEXT TO IMAGE FUNCTIONS-------------------
-def sifrele(msg):
-    # metin önce şifrelenir, sonra binary hale çevirilir ve gömülür
-    pass
+def select_input_image():
+    """Ana görüntüyü seçme fonksiyonu"""
+    file_path = filedialog.askopenfilename(
+        title="Ana Görüntüyü Seç",
+        filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")]
+    )
+    return file_path
+
+def select_second_image():
+    """Gizlenecek görüntüyü seçme fonksiyonu"""
+    file_path = filedialog.askopenfilename(
+        title="Gizlenecek Görüntüyü Seç",
+        filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")]
+    )
+    return file_path
+
+def select_steganographic_image():
+    """Steganografik görüntüyü seçme fonksiyonu (yazı çıkarma için)"""
+    file_path = filedialog.askopenfilename(
+        title="Steganografik Görüntüyü Seç (İçinde Gizli Yazı Olan)",
+        filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")]
+    )
+    return file_path
+
+def select_steganographic_image_for_extraction():
+    """Steganografik görüntüyü seçme fonksiyonu (resim çıkarma için)"""
+    file_path = filedialog.askopenfilename(
+        title="Steganografik Görüntüyü Seç (İçinde Gizli Resim Olan)",
+        filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")]
+    )
+    return file_path
+
+def save_text_to_file(text_content):
+    """Metni dosyaya kaydetme fonksiyonu"""
+    file_path = filedialog.asksaveasfilename(
+        title="Metni Kaydet",
+        defaultextension=".txt",
+        filetypes=[
+            ("Text files", "*.txt"),
+            ("All files", "*.*")
+        ]
+    )
+    
+    if file_path:
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(text_content)
+        return file_path
+    return None
+
+def save_image_to_file(image):
+    """Görüntüyü dosyaya kaydetme fonksiyonu"""
+    file_path = filedialog.asksaveasfilename(
+        title="Resmi Kaydet",
+        defaultextension=".png",
+        filetypes=[
+            ("PNG files", "*.png"),
+            ("JPEG files", "*.jpg"),
+            ("BMP files", "*.bmp"),
+            ("All files", "*.*")
+        ]
+    )
+    
+    if file_path:
+        image.save(file_path)
+        return file_path
+    return None
+
+
+
+
 
 def text_to_binary(msg):
     """
@@ -21,11 +85,7 @@ def text_to_binary(msg):
     """
     return ''.join(format(ord(c), '08b') for c in msg)  # ord() returns binary version
 
-def binary_to_text(binary): # -----kullanmıyoruz, kendi kontrollerin için kullanabilirsin
-    chars = [binary[i:i+8] for i in range(0, len(binary), 8)]
-    return ''.join(chr(int(b, 2)) for b in chars)
-
-def hide_text(image_path, msg, output_path, grey_flag:bool=False):
+def embed_text_to_image(image_path, msg, output_path, grey_flag:bool=False):
     if grey_flag:
         img = cv2.imread(image_path,cv2.IMREAD_GRAYSCALE)    
     else:
@@ -74,11 +134,15 @@ def hide_text(image_path, msg, output_path, grey_flag:bool=False):
                         break
 
     # plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))  
+    print("kaydetme öncesi shape: " , img.shape)     
     cv2.imwrite(output_path, img)
+    test = cv2.imread(output_path , cv2.IMREAD_UNCHANGED)
+    print("Kaydedilen görüntü yeniden okunduğunda shape:", test.shape)
+
     print("Hidden char count: ",binary_index)
     print("Message is hidden succesfully")
 
-def reveal_text(image_path):
+def extract_text_from_image(image_path):
     img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise Exception("Image path is wrong")
@@ -120,8 +184,19 @@ def reveal_text(image_path):
                             return hidden_msg
                         hidden_msg += karakter
                         bitler = "" # yeni 8lik bit dizisi için sıfırlanır
+    
+    # Eğer \0 karakteri bulunamazsa, toplanan mesajı döndür
+    print("hidden_msg length (final): ", len(hidden_msg))
+    return hidden_msg if hidden_msg else ""
 
-# --------------IMAGE TO IMAGE FUNCTIONS------------------
+
+
+
+
+
+
+
+
 
 def pixel_to_binary(flatten_img):
     """
@@ -132,7 +207,7 @@ def pixel_to_binary(flatten_img):
     """
     return ''.join(format(byte, '08b') for byte in flatten_img)   
 
-def hide_img(image_path, secret_img_path, output_path:str, gray_flag:bool=False):
+def embed_image_to_image(image_path, secret_img_path, output_path, gray_flag:bool=False):
     if gray_flag:
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         img_secret = cv2.imread(secret_img_path, cv2.IMREAD_GRAYSCALE)
@@ -254,7 +329,19 @@ def hide_img(image_path, secret_img_path, output_path:str, gray_flag:bool=False)
     cv2.imwrite(output_path, img)
     print("Image is hidden succesfully")
 
-def reveal_img(image_path):
+
+
+
+
+
+
+
+
+
+
+
+
+def extract_image_from_image(image_path):
     img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise Exception("Image path is wrong") 
@@ -280,23 +367,33 @@ def reveal_img(image_path):
         # Boyut bilgisine göre gizli görsel çıkartılır
         toplam_bit = x_info*y_info*3*8
         hidden_bits = ""
-        first_22_pixel_count = 0
+        pixel_count = 0  # Toplam piksel sayacı
+
         for x in range(size_x):
             for y in range(size_y):
-                if first_22_pixel_count < 66:
-                    first_22_pixel_count += 3   # ilk 22 piksel boyut bilgisini tuttuğu için atlanır
+                pixel_count += 1
+                
+                # İlk 22 pikseli atla (66 kanal = 22 piksel * 3 kanal)
+                if pixel_count <= 22:
                     continue
+                    
                 for channel in range(3):
                     if len(hidden_bits) < toplam_bit:
                         hidden_bits += str(img[x, y, channel] & 1)
                     else:
-                        print("Number of hidden image bits revealed is ", len(hidden_bits))
-                        print("It should be equal to:", x_info*y_info*3*8)
+                        # Yeterli bit toplandı, çık
                         break
+                
+                # Yeterli bit toplandıysa döngüden çık
                 if len(hidden_bits) >= toplam_bit:
                     break
+            
+            # Yeterli bit toplandıysa döngüden çık
             if len(hidden_bits) >= toplam_bit:
                 break
+
+        print("Number of hidden image bits revealed is ", len(hidden_bits))
+        print("It should be equal to:", x_info*y_info*3*8)
         
         hidden_byte_list = [int(hidden_bits[i:i+8], 2) for i in range(0, len(hidden_bits), 8)]
         hidden_img = np.array(hidden_byte_list, dtype=np.uint8).reshape((x_info, y_info, 3))
@@ -338,200 +435,65 @@ def reveal_img(image_path):
         hidden_byte_list = [int(hidden_bits[i:i+8], 2) for i in range(0, len(hidden_bits), 8)]
         hidden_img = np.array(hidden_byte_list, dtype=np.uint8).reshape((x_info, y_info))
     
-    file_name = "extracted_" + os.path.basename(image_path)
-    extracted_path = os.path.join("extracted_data/", file_name)
-    cv2.imwrite(extracted_path, hidden_img)
     return hidden_img
 
 
-# --------------PERFORMANCE METRICS------------------
-# text-to-image için BER en önemli metriktir, metin boyutu küçük olduğu için PSNR/SSIM genelde çok iyi çıkar çünkü değişiklik azdır
-# image-to-image için PSNR/MSE/SSIM/BER
+    #return Image.fromarray(extracted_bits.astype(np.uint8))
 
-def calculate_mse(original_img, hidden_img):
-    """
-    Orijinal görüntü ile gizlenmiş görüntü arasındaki piksel farklarının ortalaması
-    Ne kadar küçük değer olursa o kadar iyi performans gösterir
-    Eğer 0 ise iki görüntü birbirinin aynısıdır
-    """
-    mse = np.mean((original_img.astype(np.float32) - hidden_img.astype(np.float32)) **2)
-    return mse
 
-def calculate_psnr(original_img, hidden_img):
+
+
+
+def display_image(image, label, max_size=None):
     """
-    Orijinal görüntü ile gizlenmiş görüntü arasındaki benzerliği ölçer. Bozulma seviyesi hakkında bilgi verir.
+    Resmi label'da dinamik olarak göster
+    max_size: (width, height) - maksimum boyut, None ise label boyutuna göre ayarla
+    """
+    if image is None:
+        return
     
-    PSNR: > 30 --> Mükemmel kalite
-    PSNR: 20-30 --> Kabul edilebilir
-    PSNR: < 20 --> Görselde bozulma var
-    """
-    mse = calculate_mse(original_img, hidden_img)
-    # if mse == 0:
-    #     return "Original image and result image is the same"
-    
-    psnr = 10 * np.log10(255*255/mse)   # 255: 8 bit piksel değerleri arasındaki olabilecek en yüksek fark 
-    return psnr
-
-def calculate_ssim(original_img, hidden_img):
-    """
-    İnsan gözüne göre farkı değerlendirir
-    0 (tam farklı) ile 1(tam benzer) arasında değerler verir
-    Özellikle image-to-image için faydalı, yapısal bozulmayı ölçtüğü için
-    text-to-image için metin az yer kapladığı için çok küçük farklar olabilir
-    """
-    if len(original_img.shape) == 3:
-        return np.mean([ssim(original_img[:,:,i], hidden_img[:,:,i], data_range=255) for i in range(3)])
-    else:
-        return ssim(original_img, hidden_img, data_range=255)
-
-def calculate_ber(original_bits, extracted_bits):
-    """
-    Gizli verinin çıkarıldıktan sonra ne kadarının hatalı olduğunu ölçer
-    En anlamlı metriklerden biri bu alanda
-    """
-    min_len = min(len(original_bits), len(extracted_bits))
-    errors = sum(o != e for o, e in zip(original_bits[:min_len], extracted_bits[:min_len]))
-    return errors / min_len
-
-def image_to_bits(image):
-    return ''.join(format(byte, '08b') for byte in image.flatten())
-
-def print_performance():
-    secret_msg = "Hi Rabia!"
-    # Test edilecek görselleri yükle
-
-    # Görüntünün gizlendiği ana resim
-    img_og_rgb = cv2.imread("input_data/lenna.png")
-    img_og_gray = cv2.imread("input_data/lenna.png",  cv2.IMREAD_GRAYSCALE)
-
-    # Text mesajının eklendiği sonuç resimleri
-    img_result_txt = cv2.imread("result_data/result_lenna_txt.png")
-    img_result_txt_gray = cv2.imread("result_data/result_lenna_txt_gray.png", cv2.IMREAD_GRAYSCALE)
-
-    # Görüntünün eklendiği sonuç resimleri
-    img_result_img_to_img = cv2.imread("result_data/result_lenna_random_128_128.png")
-    img_result_img_to_img_gray = cv2.imread("result_data/result_lenna_random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
-
-    # Gizlenen görüntü resimleri
-    img_secret_rgb = cv2.imread("input_data/random_rgb_128_128.png")
-    img_secret_gray = cv2.imread("input_data/random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
-
-    # # 64x64
-    img_result_img_to_img_64 = cv2.imread("result_data/result_lenna_random_64_64.png")
-    img_result_img_to_img_gray_64 = cv2.imread("result_data/result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
-    
-    # # 64x64
-    img_secret_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
-    img_secret_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
-
-    # Extracted gizli img'leri tekrar oku
-    img_extracted_rgb = cv2.imread("extracted_data/extracted_result_lenna_random_128_128.png")
-    img_extracted_gray = cv2.imread("extracted_data/extracted_result_lenna_random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
-
-    # # 64x64
-    img_extracted_rgb_64 = cv2.imread("extracted_data/extracted_result_lenna_random_64_64.png")
-    img_extracted_gray_64 = cv2.imread("extracted_data/extracted_result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
-
-    # BER için bit dizileri
-    img_bits_hidden_rgb = image_to_bits(img_secret_rgb)
-    img_bits_extracted_rgb = image_to_bits(img_extracted_rgb)
-
-    img_bits_hidden_gray = image_to_bits(img_secret_gray)
-    img_bits_extracted_gray = image_to_bits(img_extracted_gray)
-
-    txt_bits_hidden_rgb = text_to_binary(secret_msg)
-    txt_bits_extracted_rgb = text_to_binary(reveal_text("result_data/result_lenna_txt.png"))
-
-    txt_bits_hidden_gray = text_to_binary(secret_msg)
-    txt_bits_extracted_gray = text_to_binary(reveal_text("result_data/result_lenna_txt_gray.png"))
-
-    # 64x64
-    img_bits_hidden_rgb_64 = image_to_bits(img_secret_rgb_64_64)
-    img_bits_extracted_rgb_64 = image_to_bits(img_extracted_rgb_64)
-
-    img_bits_hidden_gray_64 = image_to_bits(img_secret_gray_64_64)
-    img_bits_extracted_gray_64 = image_to_bits(img_extracted_gray_64)
-
-    # PSNR/MSE/SSIM: original, result
-    # BER: secret_img, extracted
-    results = {
-        "Text-to-Image (RGB)": {
-            "PSNR": calculate_psnr(img_og_rgb, img_result_txt),
-            "MSE": calculate_mse(img_og_rgb, img_result_txt),
-            "SSIM": calculate_ssim(img_og_rgb, img_result_txt),
-            "BER": calculate_ber(txt_bits_hidden_rgb, txt_bits_extracted_rgb)
-        },
-        "Text-to-Image (Gray)": {
-            "PSNR": calculate_psnr(img_og_gray, img_result_txt_gray),
-            "MSE": calculate_mse(img_og_gray, img_result_txt_gray),
-            "SSIM": calculate_ssim(img_og_gray, img_result_txt_gray),
-            "BER": calculate_ber(txt_bits_hidden_gray, txt_bits_extracted_gray)
-        },
-        "Image-to-Image (RGB)": {
-            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img),
-            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img),
-            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img),
-            "BER": calculate_ber(img_bits_hidden_rgb, img_bits_extracted_rgb)
-        },
-        "Image-to-Image (Gray)": {
-            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray),
-            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray),
-            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray),
-            "BER": calculate_ber(img_bits_hidden_gray, img_bits_extracted_gray)
-        },
-        "Image-to-Image (RGB) (64x64)": {
-            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64),
-            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64),
-            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64),
-            "BER": calculate_ber(img_bits_hidden_rgb_64, img_bits_extracted_rgb_64)
-        },
-        "Image-to-Image (Gray) (64x64)": {
-            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64),
-            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64),
-            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64),
-            "BER": calculate_ber(img_bits_hidden_gray_64, img_bits_extracted_gray_64)
-        }
+    try:
+        # Label'ın gerçek boyutunu al
+        label.update_idletasks()
+        label_width = label.winfo_width()
+        label_height = label.winfo_height()
         
-    }
-
-    # Tablo halinde göster
-    df = pd.DataFrame(results).T.round(4)
-    print(df)
-# --------------USE EXAMPLES------------------
-
-# # ---- TEXT TO IMAGE STEGANOGRAPHY
-# secret_msg = "Hi Rabia!"
-
-# # Hiding text in image
-# hide_text("input_data/lenna.png", secret_msg, "result_data/result_lenna_txt.png")
-
-# # Revealing text in image
-# hidden_msg = reveal_text("result_data/result_lenna_txt.png")
-# print(hidden_msg)
-
-# # Hiding text in image (grayscale)
-# hide_text("input_data/lenna.png", secret_msg, "result_data/result_lenna_txt_gray.png", grey_flag=True)
-
-# # Revealing text in image 
-# hidden_msg = reveal_text("result_data/result_lenna_txt_gray.png")
-# print(hidden_msg)
-
-# # ---- IMAGE TO IMAGE STEGANOGRAPHY
-
-# # Hiding image in image
-# hide_img("input_data/lenna.png", "input_data/random_rgb_128_128.png", "result_data/result_lenna_random_128_128.png")
-hide_img("input_data/lenna.png", "input_data/random_rgb_64_64.png", "result_data/result_lenna_random_64_64.png")
-
-# # Revealing image in image
-# hidden_img = reveal_img("result_data/result_lenna_random_128_128.png")
-hidden_img = reveal_img("result_data/result_lenna_random_64_64.png")
-
-# # Hiding image in image (greyscale)
-# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_lenna_random_gray_128_128.png", gray_flag=True)
-hide_img("input_data/lenna.png", "input_data/random_gray_64_64.png", "result_data/result_lenna_random_gray_64_64.png", gray_flag=True)
-
-# # Revealing image in image
-# hidden_img = reveal_img("result_data/result_lenna_random_gray_128_128.png")
-hidden_img = reveal_img("result_data/result_lenna_random_gray_64_64.png")
-
-# print_performance()
+        # Eğer label henüz render olmamışsa, varsayılan büyük boyut kullan
+        if label_width <= 1 or label_height <= 1:
+            if max_size:
+                target_width, target_height = max_size
+            else:
+                target_width, target_height = 500, 300  # Varsayılan büyük boyut
+        else:
+            # Label boyutundan biraz küçük hedef boyut
+            target_width = max(label_width - 10, 400)  # En az 400px
+            target_height = max(label_height - 10, 250)  # En az 250px
+            
+            # Max size sınırı varsa uygula
+            if max_size:
+                target_width = min(target_width, max_size[0])
+                target_height = min(target_height, max_size[1])
+        
+        # Orijinal resim boyutları
+        original_width, original_height = image.size
+        
+        # Aspect ratio'yu koruyarak yeniden boyutlandır
+        ratio = min(target_width / original_width, target_height / original_height)
+        
+        # Yeni boyutları hesapla (en az belirli bir boyut olsun)
+        new_width = max(int(original_width * ratio), 300)
+        new_height = max(int(original_height * ratio), 200)
+        
+        # Resmi yeniden boyutlandır (yüksek kalite)
+        resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # PhotoImage'e çevir
+        photo = ImageTk.PhotoImage(resized_image)
+        
+        # Label'ı güncelle
+        label.configure(image=photo, text="")
+        label.image = photo  # Referansı sakla
+        
+    except Exception as e:
+        print(f"Resim gösterme hatası: {e}")
+        label.configure(text=f"Resim gösterilemiyor\n{str(e)}")
