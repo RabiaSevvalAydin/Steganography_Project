@@ -8,6 +8,9 @@ from skimage.metrics import structural_similarity as ssim
 os.chdir("c:\\Users\\rabia\\Desktop\\vs_workspace\\goruntu_isleme\\Steganography_Project")  # change it to your working directory
 
 # --------------TEXT TO IMAGE FUNCTIONS-------------------
+def sifrele(msg):
+    # metin önce şifrelenir, sonra binary hale çevirilir ve gömülür
+    pass
 
 def text_to_binary(msg):
     """
@@ -71,11 +74,7 @@ def hide_text(image_path, msg, output_path, grey_flag:bool=False):
                         break
 
     # plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))  
-    print("kaydetme öncesi shape: " , img.shape)     
     cv2.imwrite(output_path, img)
-    test = cv2.imread(output_path , cv2.IMREAD_UNCHANGED)
-    print("Kaydedilen görüntü yeniden okunduğunda shape:", test.shape)
-
     print("Hidden char count: ",binary_index)
     print("Message is hidden succesfully")
 
@@ -133,7 +132,7 @@ def pixel_to_binary(flatten_img):
     """
     return ''.join(format(byte, '08b') for byte in flatten_img)   
 
-def hide_img(image_path, secret_img_path, output_path, gray_flag:bool=False):
+def hide_img(image_path, secret_img_path, output_path:str, gray_flag:bool=False):
     if gray_flag:
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         img_secret = cv2.imread(secret_img_path, cv2.IMREAD_GRAYSCALE)
@@ -339,6 +338,9 @@ def reveal_img(image_path):
         hidden_byte_list = [int(hidden_bits[i:i+8], 2) for i in range(0, len(hidden_bits), 8)]
         hidden_img = np.array(hidden_byte_list, dtype=np.uint8).reshape((x_info, y_info))
     
+    file_name = "extracted_" + os.path.basename(image_path)
+    extracted_path = os.path.join("extracted_data/", file_name)
+    cv2.imwrite(extracted_path, hidden_img)
     return hidden_img
 
 
@@ -395,84 +397,99 @@ def image_to_bits(image):
     return ''.join(format(byte, '08b') for byte in image.flatten())
 
 def print_performance():
-    # Görselleri yükle
+    secret_msg = "Hi Rabia!"
+    # Test edilecek görselleri yükle
+
+    # Görüntünün gizlendiği ana resim
     img_og_rgb = cv2.imread("input_data/lenna.png")
-    img_og_gray = cv2.cvtColor(img_og_rgb, cv2.COLOR_BGR2GRAY)
+    img_og_gray = cv2.imread("input_data/lenna.png",  cv2.IMREAD_GRAYSCALE)
 
-    img_result_hi = cv2.imread("result_data/result_hi.png")
-    img_result_hi_gray = cv2.imread("result_data/result_hi_gray.png", cv2.IMREAD_GRAYSCALE)
+    # Text mesajının eklendiği sonuç resimleri
+    img_result_txt = cv2.imread("result_data/result_lenna_txt.png")
+    img_result_txt_gray = cv2.imread("result_data/result_lenna_txt_gray.png", cv2.IMREAD_GRAYSCALE)
 
-    img_result_img_to_img = cv2.imread("result_data/result_img_to_img.png")
-    img_result_img_to_img_gray = cv2.imread("result_data/result_img_to_img_gray.png", cv2.IMREAD_GRAYSCALE)
+    # Görüntünün eklendiği sonuç resimleri
+    img_result_img_to_img = cv2.imread("result_data/result_lenna_random_128_128.png")
+    img_result_img_to_img_gray = cv2.imread("result_data/result_lenna_random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
 
-    img_hidden_rgb = cv2.imread("input_data/random_rgb_128_128.png")
-    img_hidden_gray = cv2.imread("input_data/random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
+    # Gizlenen görüntü resimleri
+    img_secret_rgb = cv2.imread("input_data/random_rgb_128_128.png")
+    img_secret_gray = cv2.imread("input_data/random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
 
-    # 64x64
-    img_result_img_to_img_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
-    img_result_img_to_img_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
-
-    # 64x64
-    img_hidden_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
-    img_hidden_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    # # 64x64
+    img_result_img_to_img_64 = cv2.imread("result_data/result_lenna_random_64_64.png")
+    img_result_img_to_img_gray_64 = cv2.imread("result_data/result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    
+    # # 64x64
+    img_secret_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
+    img_secret_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
 
     # Extracted gizli img'leri tekrar oku
-    img_extracted_rgb = cv2.imread("result_data/result_img_to_img.png")
-    img_extracted_gray = cv2.imread("result_data/result_img_to_img_gray.png", cv2.IMREAD_GRAYSCALE)
-    # 64x64
-    img_extracted_rgb_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
-    img_extracted_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    img_extracted_rgb = cv2.imread("extracted_data/extracted_result_lenna_random_128_128.png")
+    img_extracted_gray = cv2.imread("extracted_data/extracted_result_lenna_random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
+
+    # # 64x64
+    img_extracted_rgb_64 = cv2.imread("extracted_data/extracted_result_lenna_random_64_64.png")
+    img_extracted_gray_64 = cv2.imread("extracted_data/extracted_result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
 
     # BER için bit dizileri
-    bits_hidden_rgb = image_to_bits(img_hidden_rgb)
-    bits_extracted_rgb = image_to_bits(img_extracted_rgb)
+    img_bits_hidden_rgb = image_to_bits(img_secret_rgb)
+    img_bits_extracted_rgb = image_to_bits(img_extracted_rgb)
 
-    bits_hidden_gray = image_to_bits(img_hidden_gray)
-    bits_extracted_gray = image_to_bits(img_extracted_gray)
+    img_bits_hidden_gray = image_to_bits(img_secret_gray)
+    img_bits_extracted_gray = image_to_bits(img_extracted_gray)
+
+    txt_bits_hidden_rgb = text_to_binary(secret_msg)
+    txt_bits_extracted_rgb = text_to_binary(reveal_text("result_data/result_lenna_txt.png"))
+
+    txt_bits_hidden_gray = text_to_binary(secret_msg)
+    txt_bits_extracted_gray = text_to_binary(reveal_text("result_data/result_lenna_txt_gray.png"))
 
     # 64x64
-    bits_hidden_rgb_64_64 = image_to_bits(img_hidden_rgb)
-    bits_extracted_rgb_64_64 = image_to_bits(img_extracted_rgb)
+    img_bits_hidden_rgb_64 = image_to_bits(img_secret_rgb_64_64)
+    img_bits_extracted_rgb_64 = image_to_bits(img_extracted_rgb_64)
 
-    bits_hidden_gray_64_64 = image_to_bits(img_hidden_gray)
-    bits_extracted_gray_64_64 = image_to_bits(img_extracted_gray)
+    img_bits_hidden_gray_64 = image_to_bits(img_secret_gray_64_64)
+    img_bits_extracted_gray_64 = image_to_bits(img_extracted_gray_64)
 
+    # PSNR/MSE/SSIM: original, result
+    # BER: secret_img, extracted
     results = {
         "Text-to-Image (RGB)": {
-            "PSNR": calculate_psnr(img_og_rgb, img_result_hi),
-            "MSE": calculate_mse(img_og_rgb, img_result_hi),
-            "SSIM": calculate_ssim(img_og_rgb, img_result_hi),
-            "BER": "N/A"
+            "PSNR": calculate_psnr(img_og_rgb, img_result_txt),
+            "MSE": calculate_mse(img_og_rgb, img_result_txt),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_txt),
+            "BER": calculate_ber(txt_bits_hidden_rgb, txt_bits_extracted_rgb)
         },
         "Text-to-Image (Gray)": {
-            "PSNR": calculate_psnr(img_og_gray, img_result_hi_gray),
-            "MSE": calculate_mse(img_og_gray, img_result_hi_gray),
-            "SSIM": calculate_ssim(img_og_gray, img_result_hi_gray),
-            "BER": "N/A"
+            "PSNR": calculate_psnr(img_og_gray, img_result_txt_gray),
+            "MSE": calculate_mse(img_og_gray, img_result_txt_gray),
+            "SSIM": calculate_ssim(img_og_gray, img_result_txt_gray),
+            "BER": calculate_ber(txt_bits_hidden_gray, txt_bits_extracted_gray)
         },
         "Image-to-Image (RGB)": {
             "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img),
             "MSE": calculate_mse(img_og_rgb, img_result_img_to_img),
             "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img),
-            "BER": calculate_ber(bits_hidden_rgb, bits_extracted_rgb)
+            "BER": calculate_ber(img_bits_hidden_rgb, img_bits_extracted_rgb)
         },
         "Image-to-Image (Gray)": {
             "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray),
             "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray),
             "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray),
-            "BER": calculate_ber(bits_hidden_gray, bits_extracted_gray)
+            "BER": calculate_ber(img_bits_hidden_gray, img_bits_extracted_gray)
         },
         "Image-to-Image (RGB) (64x64)": {
-            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64_64),
-            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64_64),
-            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64_64),
-            "BER": calculate_ber(bits_hidden_rgb_64_64, bits_extracted_rgb_64_64)
+            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64),
+            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64),
+            "BER": calculate_ber(img_bits_hidden_rgb_64, img_bits_extracted_rgb_64)
         },
         "Image-to-Image (Gray) (64x64)": {
-            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64_64),
-            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64_64),
-            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64_64),
-            "BER": calculate_ber(bits_hidden_gray_64_64, bits_extracted_gray_64_64)
+            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64),
+            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64),
+            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64),
+            "BER": calculate_ber(img_bits_hidden_gray_64, img_bits_extracted_gray_64)
         }
         
     }
@@ -482,24 +499,39 @@ def print_performance():
     print(df)
 # --------------USE EXAMPLES------------------
 
-# Hiding text in image
-# hide_text("input_data/maymun.jpeg", "Hi rabia!", "result_data/result_maymun_text.png")
-# revealing text in image
-# hidden_msg = reveal_text("result_data/result_maymun_text.png")
-hidden_msg = reveal_text("input_data/temp.jpeg")
-print(hidden_msg)
+# # ---- TEXT TO IMAGE STEGANOGRAPHY
+# secret_msg = "Hi Rabia!"
+
+# # Hiding text in image
+# hide_text("input_data/lenna.png", secret_msg, "result_data/result_lenna_txt.png")
+
+# # Revealing text in image
+# hidden_msg = reveal_text("result_data/result_lenna_txt.png")
+# print(hidden_msg)
+
 # # Hiding text in image (grayscale)
-# hide_text("input_data/lenna.png", "Hi rabia!", "result_data/result_hi_gray.png", grey_flag=True)
-# # revealing text in image 
-# hidden_msg = reveal_text("result_data/result_hi_gray.png")
+# hide_text("input_data/lenna.png", secret_msg, "result_data/result_lenna_txt_gray.png", grey_flag=True)
+
+# # Revealing text in image 
+# hidden_msg = reveal_text("result_data/result_lenna_txt_gray.png")
+# print(hidden_msg)
+
+# # ---- IMAGE TO IMAGE STEGANOGRAPHY
 
 # # Hiding image in image
-# hide_img("input_data/maymun.jpeg", "input_data/random_rgb_128_128.png", "result_data/result_maymun_lenna.png")
-# hidden_img = reveal_img("result_data/result_maymun_lenna.png")
-# cv2.imwrite("cikartilmis_data/maymun.png", hidden_img)
+# hide_img("input_data/lenna.png", "input_data/random_rgb_128_128.png", "result_data/result_lenna_random_128_128.png")
+hide_img("input_data/lenna.png", "input_data/random_rgb_64_64.png", "result_data/result_lenna_random_64_64.png")
+
+# # Revealing image in image
+# hidden_img = reveal_img("result_data/result_lenna_random_128_128.png")
+hidden_img = reveal_img("result_data/result_lenna_random_64_64.png")
 
 # # Hiding image in image (greyscale)
-# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img_gray.png", gray_flag=True)
-# hidden_img = reveal_img("result_data/result_img_to_img_gray.png")
+# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_lenna_random_gray_128_128.png", gray_flag=True)
+hide_img("input_data/lenna.png", "input_data/random_gray_64_64.png", "result_data/result_lenna_random_gray_64_64.png", gray_flag=True)
+
+# # Revealing image in image
+# hidden_img = reveal_img("result_data/result_lenna_random_gray_128_128.png")
+hidden_img = reveal_img("result_data/result_lenna_random_gray_64_64.png")
 
 # print_performance()
