@@ -402,7 +402,7 @@ def print_performance():
 
     # Görüntünün gizlendiği ana resim
     img_og_rgb = cv2.imread("input_data/lenna.png")
-    img_og_gray = cv2.cvtColor(img_og_rgb, cv2.COLOR_BGR2GRAY)
+    img_og_gray = cv2.imread("input_data/lenna.png",  cv2.IMREAD_GRAYSCALE)
 
     # Text mesajının eklendiği sonuç resimleri
     img_result_txt = cv2.imread("result_data/result_lenna_txt.png")
@@ -417,20 +417,20 @@ def print_performance():
     img_secret_gray = cv2.imread("input_data/random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
 
     # # 64x64
-    # img_result_img_to_img_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
-    # img_result_img_to_img_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
-
+    img_result_img_to_img_64 = cv2.imread("result_data/result_lenna_random_64_64.png")
+    img_result_img_to_img_gray_64 = cv2.imread("result_data/result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    
     # # 64x64
-    # img_hidden_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
-    # img_hidden_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    img_secret_rgb_64_64 = cv2.imread("input_data/random_rgb_64_64.png")
+    img_secret_gray_64_64 = cv2.imread("input_data/random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
 
     # Extracted gizli img'leri tekrar oku
     img_extracted_rgb = cv2.imread("extracted_data/extracted_result_lenna_random_128_128.png")
     img_extracted_gray = cv2.imread("extracted_data/extracted_result_lenna_random_gray_128_128.png", cv2.IMREAD_GRAYSCALE)
 
     # # 64x64
-    # img_extracted_rgb_64_64 = cv2.imread("result_data/result_img_to_img_64_64.png")
-    # img_extracted_gray_64_64 = cv2.imread("result_data/result_img_to_img_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
+    img_extracted_rgb_64 = cv2.imread("extracted_data/extracted_result_lenna_random_64_64.png")
+    img_extracted_gray_64 = cv2.imread("extracted_data/extracted_result_lenna_random_gray_64_64.png", cv2.IMREAD_GRAYSCALE)
 
     # BER için bit dizileri
     img_bits_hidden_rgb = image_to_bits(img_secret_rgb)
@@ -445,12 +445,12 @@ def print_performance():
     txt_bits_hidden_gray = text_to_binary(secret_msg)
     txt_bits_extracted_gray = text_to_binary(reveal_text("result_data/result_lenna_txt_gray.png"))
 
-    # # 64x64
-    # bits_hidden_rgb_64_64 = image_to_bits(img_hidden_rgb)
-    # bits_extracted_rgb_64_64 = image_to_bits(img_extracted_rgb)
+    # 64x64
+    img_bits_hidden_rgb_64 = image_to_bits(img_secret_rgb_64_64)
+    img_bits_extracted_rgb_64 = image_to_bits(img_extracted_rgb_64)
 
-    # bits_hidden_gray_64_64 = image_to_bits(img_hidden_gray)
-    # bits_extracted_gray_64_64 = image_to_bits(img_extracted_gray)
+    img_bits_hidden_gray_64 = image_to_bits(img_secret_gray_64_64)
+    img_bits_extracted_gray_64 = image_to_bits(img_extracted_gray_64)
 
     # PSNR/MSE/SSIM: original, result
     # BER: secret_img, extracted
@@ -479,18 +479,18 @@ def print_performance():
             "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray),
             "BER": calculate_ber(img_bits_hidden_gray, img_bits_extracted_gray)
         },
-        # "Image-to-Image (RGB) (64x64)": {
-        #     "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64_64),
-        #     "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64_64),
-        #     "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64_64),
-        #     "BER": calculate_ber(bits_hidden_rgb_64_64, bits_extracted_rgb_64_64)
-        # },
-        # "Image-to-Image (Gray) (64x64)": {
-        #     "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64_64),
-        #     "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64_64),
-        #     "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64_64),
-        #     "BER": calculate_ber(bits_hidden_gray_64_64, bits_extracted_gray_64_64)
-        # }
+        "Image-to-Image (RGB) (64x64)": {
+            "PSNR": calculate_psnr(img_og_rgb, img_result_img_to_img_64),
+            "MSE": calculate_mse(img_og_rgb, img_result_img_to_img_64),
+            "SSIM": calculate_ssim(img_og_rgb, img_result_img_to_img_64),
+            "BER": calculate_ber(img_bits_hidden_rgb_64, img_bits_extracted_rgb_64)
+        },
+        "Image-to-Image (Gray) (64x64)": {
+            "PSNR": calculate_psnr(img_og_gray, img_result_img_to_img_gray_64),
+            "MSE": calculate_mse(img_og_gray, img_result_img_to_img_gray_64),
+            "SSIM": calculate_ssim(img_og_gray, img_result_img_to_img_gray_64),
+            "BER": calculate_ber(img_bits_hidden_gray_64, img_bits_extracted_gray_64)
+        }
         
     }
 
@@ -520,14 +520,18 @@ def print_performance():
 
 # # Hiding image in image
 # hide_img("input_data/lenna.png", "input_data/random_rgb_128_128.png", "result_data/result_lenna_random_128_128.png")
+hide_img("input_data/lenna.png", "input_data/random_rgb_64_64.png", "result_data/result_lenna_random_64_64.png")
 
 # # Revealing image in image
 # hidden_img = reveal_img("result_data/result_lenna_random_128_128.png")
+hidden_img = reveal_img("result_data/result_lenna_random_64_64.png")
 
 # # Hiding image in image (greyscale)
 # hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_lenna_random_gray_128_128.png", gray_flag=True)
+hide_img("input_data/lenna.png", "input_data/random_gray_64_64.png", "result_data/result_lenna_random_gray_64_64.png", gray_flag=True)
 
 # # Revealing image in image
 # hidden_img = reveal_img("result_data/result_lenna_random_gray_128_128.png")
+hidden_img = reveal_img("result_data/result_lenna_random_gray_64_64.png")
 
 print_performance()
