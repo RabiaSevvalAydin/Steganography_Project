@@ -2,6 +2,8 @@ import numpy as np
 from PIL import Image, ImageTk
 from tkinter import filedialog, messagebox
 import os
+import cv2
+
 
 def select_input_image():
     """Ana görüntüyü seçme fonksiyonu"""
@@ -134,37 +136,66 @@ def extract_text_from_image(image):
     
     return text
 
-def embed_image_to_image(cover_image, secret_image):
-    """Görüntüyü başka bir görüntüye gizleme fonksiyonu"""
-    # Örtü görüntüsü ve gizli görüntüyü NumPy dizilerine dönüştür
+
+def embed_image_to_image(cover_image, secret_image, quality_level=2):
+    """
+    Adaptif bit seçimi
+    quality_level: 1=düşük bozulma, 2=orta, 3=yüksek kalite gizli resim
+    """
     cover_array = np.array(cover_image).copy()
-    
-    # Gizli görüntüyü örtü görüntüsü boyutuna yeniden boyutlandır
     secret_resized = secret_image.resize(cover_image.size, Image.LANCZOS)
     secret_array = np.array(secret_resized)
     
-    # Gizli görüntünün en yüksek 4 bitini al ve 4 bit sağa kaydır (düşük bitler için)
-    secret_bits = (secret_array & 0xF0) >> 4
+    if quality_level == 1:  # Minimum bozulma
+        bits = 2
+        secret_mask = 0xC0  # 11000000
+        cover_mask = 0xFC   # 11111100
+        shift = 6
+    elif quality_level == 2:  # Dengeli
+        bits = 3
+        secret_mask = 0xE0  # 11100000
+        cover_mask = 0xF8   # 11111000
+        shift = 5
+    else:  # quality_level == 3, Maksimum gizli resim kalitesi
+        bits = 4
+        secret_mask = 0xF0  # 11110000
+        cover_mask = 0xF0   # 11110000
+        shift = 4
     
-    # Örtü görüntüsünün en düşük 4 bitini temizle
-    cover_cleared = cover_array & 0xF0
-    
-    # Gizli görüntü bitlerini örtü görüntüsüne ekle (düşük 4 bite)
+    # Bit işlemleri
+    secret_bits = (secret_array & secret_mask) >> shift
+    cover_cleared = cover_array & cover_mask
     stego_array = cover_cleared | secret_bits
     
-    # NumPy dizisini PIL Image'a dönüştür
     return Image.fromarray(stego_array.astype(np.uint8))
 
-def extract_image_from_image(stego_image):
-    """Görüntüden gizli görüntüyü çıkarma fonksiyonu"""
-    # Steganografi görüntüsünü NumPy dizisine dönüştür
+def extract_image_from_image(stego_image, quality_level=2):
+    """Adaptif çıkarma"""
     stego_array = np.array(stego_image)
     
-    # Düşük 4 biti çıkar ve yüksek 4 bite kaydır
-    extracted_array = np.left_shift((stego_array & 0x0F), 4)
+    if quality_level == 1:
+        bits = 2
+        extract_mask = 0x03  # 00000011
+        shift = 6
+    elif quality_level == 2:
+        bits = 3
+        extract_mask = 0x07  # 00000111
+        shift = 5
+    else:  # quality_level == 3
+        bits = 4
+        extract_mask = 0x0F  # 00001111
+        shift = 4
     
-    # NumPy dizisini PIL Image'a dönüştür
-    return Image.fromarray(extracted_array.astype(np.uint8))
+    # Çıkarma ve genişletme
+    extracted_bits = (stego_array & extract_mask) << shift
+    
+    # Bit genişletme (kalite artırma)
+    for i in range(1, 8 // bits):
+        extracted_bits = extracted_bits | (extracted_bits >> (bits * i))
+    
+    return Image.fromarray(extracted_bits.astype(np.uint8))
+
+
 
 def display_image(image, label, max_size=None):
     """
