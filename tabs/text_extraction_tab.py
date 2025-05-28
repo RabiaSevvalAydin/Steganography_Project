@@ -26,20 +26,96 @@ class TextExtractionTab:
         main_container = ttk.Frame(self.frame)
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Sol panel - Görüntü önizleme
-        left_frame = ttk.LabelFrame(main_container, text="Steganografik Görüntü", padding="10")
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        # Sol panel - SCROLLABLE Görüntü önizleme
+        left_outer_frame = ttk.LabelFrame(main_container, text="Steganografik Görüntü", padding="5")
+        left_outer_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
-        # Görüntü önizleme alanı
-        self.image_preview = tk.Label(left_frame, bg="#f0f0f0", width=60, height=25, 
-                                    text="Steganografik görüntü seçilmedi\n(İçinde gizli yazı olan resim)")
-        self.image_preview.pack(pady=10)
+        # Canvas ve Scrollbar oluştur
+        canvas = tk.Canvas(left_outer_frame, bg="#f8f8f8")
+        scrollbar = ttk.Scrollbar(left_outer_frame, orient="vertical", command=canvas.yview)
         
-        # Sağ panel - Kontroller
+        # Scrollable frame
+        scrollable_frame = ttk.Frame(canvas)
+        
+        # Canvas'ı yapılandır
+        def configure_scroll_region(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        def configure_canvas_width(event):
+            # Canvas genişliğini scrollable_frame'e uygula
+            canvas_width = event.width
+            canvas.itemconfig(canvas_window, width=canvas_width)
+        
+        scrollable_frame.bind("<Configure>", configure_scroll_region)
+        canvas.bind("<Configure>", configure_canvas_width)
+        
+        # Canvas window oluştur ve referansını sakla
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Canvas ve scrollbar'ı yerleştir
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Mouse wheel scroll desteği
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        def _bind_to_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        def _unbind_from_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+        
+        canvas.bind('<Enter>', _bind_to_mousewheel)
+        canvas.bind('<Leave>', _unbind_from_mousewheel)
+        
+        # Scrollable frame içine resim önizlemesini ekle
+        self.create_image_preview(scrollable_frame)
+        
+        # Sağ panel - Kontroller (SABİT GENİŞLİK)
         right_frame = ttk.LabelFrame(main_container, text="Kontrol Paneli", padding="10")
         right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        right_frame.pack_propagate(False)
+        right_frame.configure(width=280)
         
         self.create_widgets(right_frame)
+    
+    def create_image_preview(self, parent):
+        """Resim önizleme alanını oluştur (tam genişlik)"""
+        
+        # Başlık
+        preview_label = ttk.Label(parent, text="Steganografik Görüntü:", font=('Arial', 10, 'bold'))
+        preview_label.pack(fill=tk.X, pady=(5, 5))
+        
+        # Resim önizleme frame'i
+        image_frame = tk.Frame(parent, bg="#f0f0f0", relief="sunken", bd=1, height=400)
+        image_frame.pack(fill=tk.X, pady=(0, 10))
+        image_frame.pack_propagate(False)
+        
+        # Resim önizleme label'ı
+        self.image_preview = tk.Label(image_frame, bg="#f0f0f0", 
+                                    text="Steganografik görüntü seçilmedi\n(İçinde gizli yazı olan resim)\n\nBuraya yüklenecek resim tam ekran görünecek",
+                                    font=('Arial', 10), fg='gray')
+        self.image_preview.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Bilgi kutusu
+        info_frame = ttk.LabelFrame(parent, text="Bilgi", padding="10")
+        info_frame.pack(fill=tk.X, pady=10)
+        
+        info_text = tk.Text(info_frame, height=6, wrap=tk.WORD, font=('Arial', 9),
+                           state=tk.DISABLED, bg="#f9f9f9")
+        info_text.pack(fill=tk.X)
+        
+        # Bilgi metnini ekle
+        info_content = ("• Steganografik resim, içinde gizli yazı bulunan resimdir.\n\n"
+                       "• Bu resim genellikle 'Yazı Gizle' sekmesinde oluşturulmuş olmalıdır.\n\n"
+                       "• Çıkarılan yazı otomatik olarak sağ panelde gösterilecektir.\n\n"
+                       "• Resim yüklendikten sonra 'Gizli Yazıyı Çıkar' butonuna tıklayın.")
+        
+        info_text.config(state=tk.NORMAL)
+        info_text.insert("1.0", info_content)
+        info_text.config(state=tk.DISABLED)
     
     def create_widgets(self, parent):
         """Kontrol widget'larını oluştur"""
@@ -71,13 +147,13 @@ class TextExtractionTab:
         text_frame = ttk.Frame(parent)
         text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
-        self.result_text = tk.Text(text_frame, height=10, width=35, wrap=tk.WORD, 
+        self.result_text = tk.Text(text_frame, height=12, width=35, wrap=tk.WORD, 
                                   state=tk.DISABLED, bg="#f5f5f5")
-        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.result_text.yview)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
+        scrollbar_text = ttk.Scrollbar(text_frame, orient="vertical", command=self.result_text.yview)
+        self.result_text.configure(yscrollcommand=scrollbar_text.set)
         
         self.result_text.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        scrollbar_text.pack(side="right", fill="y")
         
         # Kaydet butonu
         save_button = ttk.Button(parent, text="💾 Yazıyı Dosyaya Kaydet", 
@@ -86,23 +162,6 @@ class TextExtractionTab:
         
         # Separator
         ttk.Separator(parent, orient='horizontal').pack(fill='x', pady=10)
-        
-        # Bilgi kutusu
-        info_frame = ttk.LabelFrame(parent, text="Bilgi", padding="5")
-        info_frame.pack(fill=tk.X, pady=10)
-        
-        info_text = tk.Text(info_frame, height=5, width=30, wrap=tk.WORD, font=('Arial', 8),
-                           state=tk.DISABLED, bg="#f0f0f0")
-        info_text.pack()
-        
-        # Bilgi metnini ekle
-        info_content = ("• Steganografik resim, içinde gizli yazı bulunan resimdir.\n\n"
-                       "• Bu resim genellikle 'Yazı Gizle' sekmesinde oluşturulmuş olmalıdır.\n\n"
-                       "• Çıkarılan yazı otomatik olarak gösterilecektir.")
-        
-        info_text.config(state=tk.NORMAL)
-        info_text.insert("1.0", info_content)
-        info_text.config(state=tk.DISABLED)
         
         # Durum göstergesi
         self.status_var = tk.StringVar(value="Hazır")
@@ -119,8 +178,8 @@ class TextExtractionTab:
                 self.image_path = file_path
                 self.image = Image.open(file_path)
                 
-                # Görüntüyü önizlemede göster
-                display_image(self.image, self.image_preview, (450, 300))
+                # Görüntüyü önizlemede göster (daha büyük boyut)
+                display_image(self.image, self.image_preview, (600, 380))
                 
                 # Dosya yolunu güncelle
                 filename = os.path.basename(file_path)

@@ -28,54 +28,103 @@ class ImageHidingTab:
         main_container = ttk.Frame(self.frame)
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Sol panel - Görüntü önizlemeleri (EXPAND=True)
-        left_frame = ttk.LabelFrame(main_container, text="Görüntü Önizlemeleri", padding="10")
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        # Sol panel - SCROLLABLE Görüntü önizlemeleri
+        left_outer_frame = ttk.LabelFrame(main_container, text="Görüntü Önizlemeleri", padding="5")
+        left_outer_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
-        # Ana resim önizleme - DİNAMİK BOYUT
-        main_label = ttk.Label(left_frame, text="Ana Resim (Örtü):", font=('Arial', 10, 'bold'))
-        main_label.pack(pady=(0, 5))
+        # Canvas ve Scrollbar oluştur
+        canvas = tk.Canvas(left_outer_frame, bg="#f8f8f8")
+        scrollbar = ttk.Scrollbar(left_outer_frame, orient="vertical", command=canvas.yview)
         
-        # Frame içinde label (daha iyi kontrol için)
-        main_frame = tk.Frame(left_frame, bg="#f0f0f0", relief="sunken", bd=2)
-        main_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        # Scrollable frame
+        scrollable_frame = ttk.Frame(canvas)
+        
+        # Canvas'ı yapılandır
+        def configure_scroll_region(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        def configure_canvas_width(event):
+            # Canvas genişliğini scrollable_frame'e uygula
+            canvas_width = event.width
+            canvas.itemconfig(canvas_window, width=canvas_width)
+        
+        scrollable_frame.bind("<Configure>", configure_scroll_region)
+        canvas.bind("<Configure>", configure_canvas_width)
+        
+        # Canvas window oluştur ve referansını sakla
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Canvas ve scrollbar'ı yerleştir
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Mouse wheel scroll desteği
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        def _bind_to_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        def _unbind_from_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+        
+        canvas.bind('<Enter>', _bind_to_mousewheel)
+        canvas.bind('<Leave>', _unbind_from_mousewheel)
+        
+        # Şimdi scrollable_frame içine resim önizlemelerini ekle
+        self.create_image_previews(scrollable_frame)
+        
+        # Sağ panel - Kontroller (SABİT GENİŞLİK)
+        right_frame = ttk.LabelFrame(main_container, text="Kontrol Paneli", padding="10")
+        right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        right_frame.pack_propagate(False)
+        right_frame.configure(width=280)
+        
+        self.create_widgets(right_frame)
+
+
+    def create_image_previews(self, parent):
+        """Resim önizlemelerini oluştur (tam genişlik)"""
+        
+        # Ana resim önizleme
+        main_label = ttk.Label(parent, text="Ana Resim (Örtü):", font=('Arial', 10, 'bold'))
+        main_label.pack(fill=tk.X, pady=(5, 2))
+        
+        main_frame = tk.Frame(parent, bg="#f0f0f0", relief="sunken", bd=1, height=200)
+        main_frame.pack(fill=tk.X, pady=(0, 10))  # fill=tk.X ile tam genişlik
+        main_frame.pack_propagate(False)
         
         self.main_image_preview = tk.Label(main_frame, bg="#f0f0f0", 
                                         text="Ana resim seçilmedi\n(Gizli resmin üzerine bindirilecek resim)",
                                         font=('Arial', 9), fg='gray')
         self.main_image_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Gizli resim önizleme - DİNAMİK BOYUT
-        secret_label = ttk.Label(left_frame, text="Gizlenecek Resim:", font=('Arial', 10, 'bold'))
-        secret_label.pack(pady=(0, 5))
+        # Gizli resim önizleme
+        secret_label = ttk.Label(parent, text="Gizlenecek Resim:", font=('Arial', 10, 'bold'))
+        secret_label.pack(fill=tk.X, pady=(5, 2))
         
-        secret_frame = tk.Frame(left_frame, bg="#f0f0f0", relief="sunken", bd=2)
-        secret_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        secret_frame = tk.Frame(parent, bg="#f0f0f0", relief="sunken", bd=1, height=200)
+        secret_frame.pack(fill=tk.X, pady=(0, 10))  # fill=tk.X ile tam genişlik
+        secret_frame.pack_propagate(False)
         
         self.secret_image_preview = tk.Label(secret_frame, bg="#f0f0f0", 
                                             text="Gizlenecek resim seçilmedi\n(Ana resmin içine gizlenecek resim)",
                                             font=('Arial', 9), fg='gray')
         self.secret_image_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Sonuç resim önizleme - DİNAMİK BOYUT
-        result_label = ttk.Label(left_frame, text="Sonuç (Steganografik Resim):", font=('Arial', 10, 'bold'))
-        result_label.pack(pady=(0, 5))
+        # Sonuç resim önizleme
+        result_label = ttk.Label(parent, text="Sonuç (Steganografik Resim):", font=('Arial', 10, 'bold'))
+        result_label.pack(fill=tk.X, pady=(5, 2))
         
-        result_frame = tk.Frame(left_frame, bg="#f0f0f0", relief="sunken", bd=2)
-        result_frame.pack(fill=tk.BOTH, expand=True)
+        result_frame = tk.Frame(parent, bg="#f0f0f0", relief="sunken", bd=1, height=200)
+        result_frame.pack(fill=tk.X, pady=(0, 5))  # fill=tk.X ile tam genişlik
+        result_frame.pack_propagate(False)
         
         self.result_image_preview = tk.Label(result_frame, bg="#f0f0f0", 
                                         text="Steganografik resim burada görünecek\n(İşlem sonrası oluşan resim)",
                                         font=('Arial', 9), fg='gray')
         self.result_image_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # Sağ panel - Kontroller (SABİT GENİŞLİK)
-        right_frame = ttk.LabelFrame(main_container, text="Kontrol Paneli", padding="10")
-        right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
-        right_frame.pack_propagate(False)  # Boyut sabitlenmesi için
-        right_frame.configure(width=280)   # Sabit genişlik
-        
-        self.create_widgets(right_frame)
 
     
     def create_widgets(self, parent):
