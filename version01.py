@@ -154,7 +154,7 @@ def hide_img(image_path, secret_img_path, output_path, gray_flag:bool=False):
         if size_x_1 * size_y_1 * 3 < size_x_2 * size_y_2 * 24:
             print(img.shape)
             print(img_secret.shape)
-            raise ValueError(f"Seçilen resim, saklanacak resmi gömmek için yeterli büyüklükte değil, {size_x_1 * size_y_1 * 3} > {size_x_2 * size_y_2 * 24} olmalı")
+            raise ValueError(f"Seçilen resim, saklanacak resmi gömmek için yeterli büyüklükte değil, {size_x_1 * size_y_1 * 3} > {size_x_2 * size_y_2 * 24} olmalı\n Ana resim boyutu {size_x_1}x{size_y_1}, Gömülecek resim boyutu {size_x_2}x{size_y_2}")
         
         print("img_secret.shape", img_secret.shape) # (512, 512, 3)
         img_secret_flat = img_secret.flatten()
@@ -482,22 +482,24 @@ def print_performance():
     print(df)
 # --------------USE EXAMPLES------------------
 
-# # Hiding text in image
-# hide_text("input_data/lenna.png", "Hi rabia!", "result_data/result_hi.png")
-# # revealing text in image
-# hidden_msg = reveal_text("result_data/result_hi.png")
-
+# Hiding text in image
+# hide_text("input_data/maymun.jpeg", "Hi rabia!", "result_data/result_maymun_text.png")
+# revealing text in image
+# hidden_msg = reveal_text("result_data/result_maymun_text.png")
+hidden_msg = reveal_text("input_data/temp.jpeg")
+print(hidden_msg)
 # # Hiding text in image (grayscale)
 # hide_text("input_data/lenna.png", "Hi rabia!", "result_data/result_hi_gray.png", grey_flag=True)
 # # revealing text in image 
 # hidden_msg = reveal_text("result_data/result_hi_gray.png")
 
 # # Hiding image in image
-# hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img.png")
-# hidden_img = reveal_img("result_data/result_img_to_img.png")
+# hide_img("input_data/maymun.jpeg", "input_data/random_rgb_128_128.png", "result_data/result_maymun_lenna.png")
+# hidden_img = reveal_img("result_data/result_maymun_lenna.png")
+# cv2.imwrite("cikartilmis_data/maymun.png", hidden_img)
 
 # # Hiding image in image (greyscale)
 # hide_img("input_data/lenna.png", "input_data/random_gray_128_128.png", "result_data/result_img_to_img_gray.png", gray_flag=True)
 # hidden_img = reveal_img("result_data/result_img_to_img_gray.png")
 
-print_performance()
+# print_performance()
