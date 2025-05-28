@@ -31,8 +31,8 @@ class TextExtractionTab:
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
         # Görüntü önizleme alanı
-        self.image_preview = tk.Label(left_frame, bg="#e0e0e0", width=50, height=25, 
-                                     text="Steganografik görüntü seçilmedi\n(İçinde gizli yazı olan resim)")
+        self.image_preview = tk.Label(left_frame, bg="#f0f0f0", width=60, height=25, 
+                                    text="Steganografik görüntü seçilmedi\n(İçinde gizli yazı olan resim)")
         self.image_preview.pack(pady=10)
         
         # Sağ panel - Kontroller
@@ -120,7 +120,7 @@ class TextExtractionTab:
                 self.image = Image.open(file_path)
                 
                 # Görüntüyü önizlemede göster
-                display_image(self.image, self.image_preview, (400, 300))
+                display_image(self.image, self.image_preview, (450, 300))
                 
                 # Dosya yolunu güncelle
                 filename = os.path.basename(file_path)

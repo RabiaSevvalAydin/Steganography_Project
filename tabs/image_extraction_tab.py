@@ -34,16 +34,16 @@ class ImageExtractionTab:
         stego_label = ttk.Label(left_frame, text="Steganografik Resim:", font=('Arial', 10, 'bold'))
         stego_label.pack(pady=(0, 5))
         
-        self.stego_image_preview = tk.Label(left_frame, bg="#e0e0e0", width=40, height=15, 
-                                           text="Steganografik resim seçilmedi\n(İçinde gizli resim olan)")
+        self.stego_image_preview = tk.Label(left_frame, bg="#f0f0f0", width=50, height=18, 
+                                        text="Steganografik resim seçilmedi\n(İçinde gizli resim olan)")
         self.stego_image_preview.pack(pady=(0, 20))
         
         # Çıkarılan resim önizleme
         extracted_label = ttk.Label(left_frame, text="Çıkarılan Gizli Resim:", font=('Arial', 10, 'bold'))
         extracted_label.pack(pady=(0, 5))
         
-        self.extracted_image_preview = tk.Label(left_frame, bg="#e0e0e0", width=40, height=15, 
-                                               text="Çıkarılan resim burada görünecek")
+        self.extracted_image_preview = tk.Label(left_frame, bg="#f0f0f0", width=50, height=18, 
+                                            text="Çıkarılan resim burada görünecek")
         self.extracted_image_preview.pack()
         
         # Sağ panel - Kontroller
@@ -122,7 +122,7 @@ class ImageExtractionTab:
                 self.steganographic_image = Image.open(file_path)
                 
                 # Steganografik resmi önizlemede göster
-                display_image(self.steganographic_image, self.stego_image_preview, (300, 200))
+                display_image(self.steganographic_image, self.stego_image_preview, (400, 250))
                 
                 # Dosya yolunu güncelle
                 filename = os.path.basename(file_path)
@@ -149,7 +149,7 @@ class ImageExtractionTab:
             self.extracted_image = extract_image_from_image(self.steganographic_image)
             
             # Çıkarılan resmi önizlemede göster
-            display_image(self.extracted_image, self.extracted_image_preview, (300, 200))
+            display_image(self.extracted_image, self.extracted_image_preview, (400, 250))
             
             # Durum güncelle
             self.status_var.set("Gizli resim başarıyla çıkarıldı!")

@@ -31,8 +31,8 @@ class TextHidingTab:
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
         # Görüntü önizleme alanı
-        self.image_preview = tk.Label(left_frame, bg="#e0e0e0", width=50, height=25, 
-                                     text="Görüntü seçilmedi\nLütfen bir görüntü seçin")
+        self.image_preview = tk.Label(left_frame, bg="#f0f0f0", width=60, height=25, 
+                             text="Resim seçilmedi\n(Yazının gizleneceği resim)")
         self.image_preview.pack(pady=10)
         
         # Sağ panel - Kontroller
@@ -106,8 +106,8 @@ class TextHidingTab:
                 self.input_image_path = file_path
                 self.input_image = Image.open(file_path)
                 
-                # Görüntüyü önizlemede göster
-                display_image(self.input_image, self.image_preview, (400, 300))
+                # Görüntüyü önizlemede göster - BÜYÜK BOYUT
+                display_image(self.input_image, self.image_preview, (450, 300))
                 
                 # Dosya yolunu güncelle
                 filename = os.path.basename(file_path)
@@ -117,6 +117,7 @@ class TextHidingTab:
         except Exception as e:
             messagebox.showerror("Hata", f"Görüntü yüklenirken hata oluştu: {str(e)}")
             self.status_var.set("Hata: Görüntü yüklenemedi")
+
     
     def hide_text(self):
         """Yazı gizleme fonksiyonu"""

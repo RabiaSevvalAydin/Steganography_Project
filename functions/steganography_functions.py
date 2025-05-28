@@ -1,5 +1,5 @@
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageTk
 from tkinter import filedialog, messagebox
 import os
 
@@ -166,12 +166,56 @@ def extract_image_from_image(stego_image):
     # NumPy dizisini PIL Image'a dönüştür
     return Image.fromarray(extracted_array.astype(np.uint8))
 
-def display_image(img, label, size):
-    """Görüntüyü label'da gösterme fonksiyonu"""
-    from PIL import ImageTk
-    # Görüntüyü yeniden boyutlandır
-    img = img.resize(size, Image.LANCZOS)
-    photo = ImageTk.PhotoImage(img)
-    label.config(image=photo)
-    label.image = photo  # Referansı koru
-    return photo
+def display_image(image, label, max_size=None):
+    """
+    Resmi label'da dinamik olarak göster
+    max_size: (width, height) - maksimum boyut, None ise label boyutuna göre ayarla
+    """
+    if image is None:
+        return
+    
+    try:
+        # Label'ın gerçek boyutunu al
+        label.update_idletasks()
+        label_width = label.winfo_width()
+        label_height = label.winfo_height()
+        
+        # Eğer label henüz render olmamışsa, varsayılan büyük boyut kullan
+        if label_width <= 1 or label_height <= 1:
+            if max_size:
+                target_width, target_height = max_size
+            else:
+                target_width, target_height = 500, 300  # Varsayılan büyük boyut
+        else:
+            # Label boyutundan biraz küçük hedef boyut
+            target_width = max(label_width - 10, 400)  # En az 400px
+            target_height = max(label_height - 10, 250)  # En az 250px
+            
+            # Max size sınırı varsa uygula
+            if max_size:
+                target_width = min(target_width, max_size[0])
+                target_height = min(target_height, max_size[1])
+        
+        # Orijinal resim boyutları
+        original_width, original_height = image.size
+        
+        # Aspect ratio'yu koruyarak yeniden boyutlandır
+        ratio = min(target_width / original_width, target_height / original_height)
+        
+        # Yeni boyutları hesapla (en az belirli bir boyut olsun)
+        new_width = max(int(original_width * ratio), 300)
+        new_height = max(int(original_height * ratio), 200)
+        
+        # Resmi yeniden boyutlandır (yüksek kalite)
+        resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # PhotoImage'e çevir
+        photo = ImageTk.PhotoImage(resized_image)
+        
+        # Label'ı güncelle
+        label.configure(image=photo, text="")
+        label.image = photo  # Referansı sakla
+        
+    except Exception as e:
+        print(f"Resim gösterme hatası: {e}")
+        label.configure(text=f"Resim gösterilemiyor\n{str(e)}")
