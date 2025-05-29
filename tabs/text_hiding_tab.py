@@ -246,7 +246,7 @@ class TextHidingTab:
             self.process_status_var.set("Yazı gizlendi - Kaydetmeye hazır ✅")
             
             char_count = len(text_to_hide)
-            messagebox.showinfo("Başarılı", f"Yazı resme başarıyla gizlendi!\n\nGizlenen yazı: {char_count} karakter\n\nOrijinal resim üzerine kaydedildi.")
+            messagebox.showinfo("Başarılı", f"Yazı resme başarıyla gizlendi!\n\nGizlenen yazı: {char_count} karakter\n")
             
         except Exception as e:
             messagebox.showerror("Hata", f"Yazı gizleme sırasında hata oluştu: {str(e)}")
